@@ -1,0 +1,12 @@
+# Ignore everything
+*
+!.gitignore
+
+# Allow DAG files
+!airflow_iceberg_universal/
+!iceberg_airflow_dag.py
+!iceberg_read_job.py
+!AIRFLOW_SETUP_SUMMARY.md
+!airflow_hive_setup.md
+!k8s-hive-secret.yaml
+!iceberg_with_hive.py
