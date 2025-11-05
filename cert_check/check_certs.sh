@@ -15,9 +15,13 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 # Defaults (can be overridden by env or CLI)
 TARGETS_FILE="${TARGETS_FILE:-$SCRIPT_DIR/targets.txt}"
 ALERT_DAYS_DEFAULT="${ALERT_DAYS_DEFAULT:-30}"
-MAIL_TO="${MAIL_TO:-root@localhost}"
+# Local mailbox delivery by default: deliver to system user mailbox (readable via `mailx`)
+MAILBOX_USER_DEFAULT="$(id -un 2>/dev/null || echo root)"
+MAIL_TO="${MAIL_TO:-$MAILBOX_USER_DEFAULT}"
 MAIL_FROM="${MAIL_FROM:-cert-checker@$(hostname -f 2>/dev/null || hostname)}"
 MAIL_SUBJECT_PREFIX="${MAIL_SUBJECT_PREFIX:-[TLS-CERT]}"
+# If true, force local delivery via sendmail and address without domain
+MAIL_LOCAL_ONLY="${MAIL_LOCAL_ONLY:-true}"
 QUIET="false"
 
 usage() {
@@ -30,7 +34,7 @@ Options:
   -q        Quiet mode (only errors/alerts)
 
 Environment overrides:
-  TARGETS_FILE, ALERT_DAYS_DEFAULT, MAIL_TO, MAIL_FROM, MAIL_SUBJECT_PREFIX
+  TARGETS_FILE, ALERT_DAYS_DEFAULT, MAIL_TO, MAIL_FROM, MAIL_SUBJECT_PREFIX, MAIL_LOCAL_ONLY
 
 Targets file format:
   - One entry per line, comments start with '#', blank lines ignored
@@ -64,6 +68,19 @@ send_mail() {
   from_addr="$3"
   body="$4"
 
+  # Prefer local delivery via sendmail if MAIL_LOCAL_ONLY=true
+  if [ "$MAIL_LOCAL_ONLY" = "true" ] && [ -x /usr/sbin/sendmail ]; then
+    {
+      printf "From: %s\n" "$from_addr"
+      printf "To: %s\n" "$to_addr"
+      printf "Subject: %s\n" "$subject"
+      printf "Content-Type: text/plain; charset=UTF-8\n\n"
+      printf "%s\n" "$body"
+    } | /usr/sbin/sendmail -t || return 1
+    return 0
+  fi
+
+  # Otherwise try mailx, then mail, then sendmail
   if have_cmd mailx; then
     printf "%s" "$body" | mailx -a "From: $from_addr" -s "$subject" "$to_addr" || return 1
     return 0
@@ -72,7 +89,6 @@ send_mail() {
     printf "%s" "$body" | mail -a "From: $from_addr" -s "$subject" "$to_addr" || return 1
     return 0
   fi
-  # Fallback: try /usr/sbin/sendmail if present
   if [ -x /usr/sbin/sendmail ]; then
     {
       printf "From: %s\n" "$from_addr"
@@ -83,7 +99,7 @@ send_mail() {
     } | /usr/sbin/sendmail -t || return 1
     return 0
   fi
-  warn "No mailer (mailx/mail/sendmail) available to send alerts"
+  warn "No mailer (sendmail/mailx/mail) available to send alerts"
   return 1
 }
 

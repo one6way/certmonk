@@ -8,7 +8,8 @@ Type=oneshot
 User=root
 WorkingDirectory=/opt/cert_check
 ExecStart=/opt/cert_check/check_certs.sh -f /opt/cert_check/targets.txt -d 30 -q
-Environment=MAIL_TO=root@localhost
+Environment=MAIL_TO=root
+Environment=MAIL_LOCAL_ONLY=true
 Environment=MAIL_FROM=cert-checker@%H
 StandardOutput=journal
 StandardError=journal

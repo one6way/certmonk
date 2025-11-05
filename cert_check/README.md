@@ -33,9 +33,10 @@ cp cert_check/targets.example.txt cert_check/targets.txt
 #### Environment variables
 - `TARGETS_FILE`: path to targets file (default: `./targets.txt`)
 - `ALERT_DAYS_DEFAULT`: default threshold in days (default: `30`)
-- `MAIL_TO`: recipient (default: `root@localhost`)
+- `MAIL_TO`: recipient (default: current system user name, local mailbox)
 - `MAIL_FROM`: sender (default: `cert-checker@$(hostname -f)`) 
 - `MAIL_SUBJECT_PREFIX`: subject prefix (default: `[TLS-CERT]`)
+- `MAIL_LOCAL_ONLY`: `true|false` force local mailbox via sendmail (default: `true`)
 
 #### Usage
 ```
@@ -46,7 +47,7 @@ cp cert_check/targets.example.txt cert_check/targets.txt
 - Exit code `1`: at least one alert or error occurred
 
 #### systemd setup (optional)
-Place units and enable a timer:
+Place units and enable a timer (local mailbox by default):
 ```
 sudo cp cert_check/systemd/check-certs.service /etc/systemd/system/
 sudo cp cert_check/systemd/check-certs.timer /etc/systemd/system/
@@ -61,6 +62,18 @@ sudo journalctl -u check-certs.service -n 100 -f
 ```
 
 Edit paths inside the unit to point to the repo location.
+
+#### Local mailbox (mailx)
+By default, messages are delivered to the local system mailbox for the user and can be read with `mailx`:
+```
+mailx
+```
+For `root` mailbox:
+```
+sudo su -
+mailx
+```
+To force local delivery, keep `MAIL_LOCAL_ONLY=true` and set `MAIL_TO` to a local username (no domain), e.g. `root`.
 
 #### Push to GitHub (repo is empty)
 Initialize repo locally and push main branch to `one6way/certmonk`:
